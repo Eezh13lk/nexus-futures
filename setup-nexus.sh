@@ -39,8 +39,8 @@ android {
         applicationId 'com.eezh.nexusfutures'
         minSdk 26
         targetSdk 35
-        versionCode 3
-        versionName '3.0.0'
+        versionCode 4
+        versionName '4.0.0'
     }
 }
 
@@ -96,6 +96,8 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setDatabaseEnabled(true);
+        s.setAllowFileAccessFromFileURLs(true);
+        s.setAllowUniversalAccessFromFileURLs(true);
         s.setBuiltInZoomControls(false);
         s.setDisplayZoomControls(false);
         w.loadUrl("file:///android_asset/index.html");
@@ -142,7 +144,7 @@ pre{white-space:pre-wrap;color:#9eacc0;font-size:10px;max-height:170px;overflow:
 <div><div class="label">Symbol</div><select id="sym"><option>BTCUSDT</option><option>ETHUSDT</option><option>BNBUSDT</option><option>SOLUSDT</option><option>XRPUSDT</option></select></div>
 <div><div class="label">Timeframe</div><select id="tf"><option>1m</option><option selected>5m</option><option>15m</option><option>1h</option></select></div>
 </div></div>
-<div class="card"><canvas id="chart"></canvas></div>
+<div class="card"><div class="row" style="margin-bottom:8px"><span class="badge" id="conn">● CONNECTING</span><span class="tiny" id="dataage">Waiting for market data…</span></div><canvas id="chart"></canvas></div>
 <div class="card"><b>Live Intelligence</b><table>
 <tr><td>Price</td><td id="price">—</td></tr><tr><td>Trend / EMA</td><td id="trend">—</td></tr><tr><td>RSI</td><td id="rsi">—</td></tr><tr><td>ATR</td><td id="atr">—</td></tr><tr><td>Structure</td><td id="structure">—</td></tr><tr><td>Liquidity</td><td id="sweep">—</td></tr><tr><td>FVG / Imbalance</td><td id="fvg">—</td></tr></table><br><div class="label">Confluence</div><div class="bar"><div id="scorebar" class="fill"></div></div><div style="text-align:right;margin-top:5px"><b id="score">0</b>/8</div></div>
 <div class="card ai"><div class="aihead"><div class="aiorb">N</div><b>NEXUS AI — Setup Coach</b></div><div id="aitrade" class="bubble">Waiting for enough market data.</div><div><span class="chip" onclick="teach('What is confluence?')">Explain confluence</span><span class="chip" onclick="teach('Why this setup?')">Why this setup?</span><span class="chip" onclick="teach('How should I manage risk?')">Risk lesson</span></div></div>
@@ -231,12 +233,62 @@ function checkExit(){
  let max=Math.abs(equity*(Number($("maxloss").value)||2)/100);if(dayPnl<=-max){killed=true;running=false;$("status").textContent="KILLED";$("status").className="big red";log("Daily loss limit reached")}
  updatePos();
 }
+async function loadHistory(){
+  const symbol=$("sym").value, interval=$("tf").value;
+  $("conn").textContent="● LOADING HISTORY"; $("conn").className="badge yellow";
+  $("dataage").textContent="Fetching recent candles…";
+  try{
+    const url="https://fapi.binance.com/fapi/v1/klines?symbol="+symbol+"&interval="+interval+"&limit=250";
+    const r=await fetch(url,{cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const data=await r.json();
+    closes=[];highs=[];lows=[];vols=[];
+    data.forEach(k=>{
+      highs.push(Number(k[2])); lows.push(Number(k[3])); closes.push(Number(k[4])); vols.push(Number(k[5]));
+    });
+    if(data.length){
+      lastBar=Number(data[data.length-1][0]);
+      price=Number(data[data.length-1][4]);
+      $("price").textContent=fmt(price);
+      $("conn").textContent="● HISTORY READY"; $("conn").className="badge cyan";
+      $("dataage").textContent=data.length+" candles loaded";
+      analyze();
+      log("Loaded "+data.length+" historical "+interval+" candles for "+symbol);
+    }
+  }catch(e){
+    $("conn").textContent="● HISTORY ERROR"; $("conn").className="badge red";
+    $("dataage").textContent="Could not load candles";
+    log("History error: "+e.message);
+  }
+}
 function connect(){
- if(ws)try{ws.close()}catch(e){}let s=$("sym").value.toLowerCase(),t=$("tf").value;
- ws=new WebSocket("wss://fstream.binance.com/ws/"+s+"@kline_"+t);
- ws.onopen=()=>log("Connected to Binance Futures public stream");ws.onclose=()=>{log("Stream disconnected");setTimeout(()=>{if(!killed)connect()},3000)};
- ws.onerror=()=>log("WebSocket error");ws.onmessage=e=>{let d=JSON.parse(e.data),k=d.k;if(!k)return;price=Number(k.c);
- $("price").textContent=fmt(price);if(Number(k.t)!==lastBar){lastBar=Number(k.t);closes.push(price);highs.push(+k.h);lows.push(+k.l);vols.push(+k.v);if(closes.length>300){closes.shift();highs.shift();lows.shift();vols.shift()}analyze()}checkExit()};
+  if(ws)try{ws.close()}catch(e){}
+  let s=$("sym").value.toLowerCase(),t=$("tf").value;
+  $("conn").textContent="● CONNECTING LIVE"; $("conn").className="badge yellow";
+  ws=new WebSocket("wss://fstream.binance.com/ws/"+s+"@kline_"+t);
+  ws.onopen=()=>{ $("conn").textContent="● LIVE"; $("conn").className="badge green"; $("dataage").textContent="Live market stream connected"; log("Connected to Binance Futures live stream"); };
+  ws.onclose=()=>{ $("conn").textContent="● RECONNECTING"; $("conn").className="badge yellow"; $("dataage").textContent="Live stream disconnected"; log("Stream disconnected — reconnecting"); setTimeout(()=>{if(!killed)connect()},3000)};
+  ws.onerror=()=>{ $("conn").textContent="● STREAM ERROR"; $("conn").className="badge red"; log("WebSocket error"); };
+  ws.onmessage=e=>{
+    let d=JSON.parse(e.data),k=d.k;if(!k)return;
+    price=Number(k.c); $("price").textContent=fmt(price);
+    $("dataage").textContent="Live • "+new Date().toLocaleTimeString();
+    let bt=Number(k.t);
+    if(closes.length===0){
+      closes.push(price); highs.push(+k.h); lows.push(+k.l); vols.push(+k.v); lastBar=bt;
+    } else if(bt===lastBar){
+      closes[closes.length-1]=price; highs[highs.length-1]=+k.h; lows[lows.length-1]=+k.l; vols[vols.length-1]=+k.v;
+    } else {
+      lastBar=bt; closes.push(price); highs.push(+k.h); lows.push(+k.l); vols.push(+k.v);
+      if(closes.length>300){closes.shift();highs.shift();lows.shift();vols.shift()}
+    }
+    if(closes.length>=55) analyze();
+    checkExit();
+  };
+}
+async function initializeMarket(){
+  await loadHistory();
+  if(!killed) connect();
 }
 function startBot(){killed=false;running=true;$("status").textContent="RUNNING";$("status").className="big green";log("Paper engine started")}
 function stopBot(){running=false;$("status").textContent="STOPPED";$("status").className="big yellow";log("Paper engine stopped")}
@@ -251,8 +303,36 @@ function updateAnalytics(){
  $("analyticsText").textContent="NEXUS has "+trades.length+" paper trade(s). It is tracking outcome patterns and will use larger samples before proposing adaptive rule changes.";
  $("radar").innerHTML='<div class="metric"><span>'+$("sym").value+'</span><b class="cyan">'+$("score").textContent+'/8</b></div><div class="metric"><span>Current price</span><b>'+fmt(price)+'</b></div><div class="metric"><span>Engine</span><b class="'+(running?"green":"yellow")+'">'+(running?"RUNNING":"STOPPED")+'</b></div>';
 }
-function draw(){let c=$("chart"),x=c.getContext("2d"),w=c.width=c.clientWidth*2,h=c.height=c.clientHeight*2;x.clearRect(0,0,w,h);if(closes.length<2)return;let a=closes.slice(-80),mn=Math.min(...a),mx=Math.max(...a);x.strokeStyle="#45d8ff";x.lineWidth=3;x.beginPath();a.forEach((v,i)=>{let px=10+i*(w-20)/(a.length-1),py=h-10-(v-mn)/(mx-mn||1)*(h-20);i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke()}
-$("sym").onchange=()=>{closes=[];highs=[];lows=[];vols=[];connect()};$("tf").onchange=()=>{closes=[];highs=[];lows=[];vols=[];connect()};connect();log("NEXUS 3.0 initialized — adaptive paper intelligence online");
+function draw(){
+  let c=$("chart"),x=c.getContext("2d"),w=c.width=c.clientWidth*2,h=c.height=c.clientHeight*2;
+  x.clearRect(0,0,w,h);
+  if(closes.length<2)return;
+  let n=Math.min(70,closes.length),from=closes.length-n;
+  let hh=highs.slice(from),ll=lows.slice(from),cc=closes.slice(from);
+  let mn=Math.min(...ll),mx=Math.max(...hh),pad=18;
+  let step=(w-pad*2)/n, scale=v=>h-pad-(v-mn)/(mx-mn||1)*(h-pad*2);
+  // grid
+  x.strokeStyle="#142238";x.lineWidth=1;
+  for(let i=1;i<5;i++){let gy=pad+i*(h-pad*2)/5;x.beginPath();x.moveTo(pad,gy);x.lineTo(w-pad,gy);x.stroke()}
+  // candles
+  cc.forEach((v,i)=>{
+    let hi=scale(hh[i]),lo=scale(ll[i]),open=i?cc[i-1]:v,close=v;
+    let oy=scale(open),cy=scale(close),cx=pad+i*step+step/2;
+    x.strokeStyle=close>=open?"#32e69b":"#ff5573";x.lineWidth=2;
+    x.beginPath();x.moveTo(cx,hi);x.lineTo(cx,lo);x.stroke();
+    x.fillStyle=close>=open?"#32e69b":"#ff5573";
+    let top=Math.min(oy,cy), bh=Math.max(2,Math.abs(oy-cy));
+    x.fillRect(cx-step*.28,top,step*.56,bh);
+  });
+  function overlay(period,stroke){
+    if(closes.length<period)return;
+    let all=[];for(let i=period;i<=closes.length;i++)all.push(ema(closes.slice(0,i),period));
+    let vals=all.slice(-n);x.strokeStyle=stroke;x.lineWidth=3;x.beginPath();
+    vals.forEach((v,i)=>{let px=pad+(i+.5)*step,py=scale(v);i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke();
+  }
+  overlay(20,"#45d8ff");overlay(50,"#9b6cff");
+}
+$("sym").onchange=()=>{closes=[];highs=[];lows=[];vols=[];initializeMarket()};$("tf").onchange=()=>{closes=[];highs=[];lows=[];vols=[];initializeMarket()};initializeMarket();log("NEXUS 4.0 initialized — loading market intelligence");
 </script></body></html>
 EOFF
 
