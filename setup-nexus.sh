@@ -1,62 +1,233 @@
 #!/usr/bin/env bash
-set -euo pipefail
-rm -rf app gradle settings.gradle build.gradle gradle.properties
+set -e
+
 mkdir -p app/src/main/java/com/eezh/nexusfutures app/src/main/res/values
-cat > settings.gradle <<'E'
+
+cat > settings.gradle <<'EOF'
 pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
-dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
-rootProject.name='NEXUS-Futures'; include ':app'
-E
-cat > build.gradle <<'E'
-plugins { id 'com.android.application' version '8.7.3' apply false }
-E
-cat > gradle.properties <<'E'
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories { google(); mavenCentral() }
+}
+rootProject.name = "NEXUS-Futures"
+include(":app")
+EOF
+
+cat > build.gradle <<'EOF'
+plugins {
+    id 'com.android.application' version '8.7.3' apply false
+}
+EOF
+
+cat > gradle.properties <<'EOF'
+org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
 android.useAndroidX=true
-org.gradle.jvmargs=-Xmx3072m -Dfile.encoding=UTF-8
-E
-cat > app/build.gradle <<'E'
+android.nonTransitiveRClass=true
+EOF
+
+cat > app/build.gradle <<'EOF'
 plugins { id 'com.android.application' }
-android { namespace 'com.eezh.nexusfutures'; compileSdk 35
- defaultConfig { applicationId 'com.eezh.nexusfutures'; minSdk 26; targetSdk 35; versionCode 40; versionName '4.0.0' }
+
+android {
+    namespace 'com.eezh.nexusfutures'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.eezh.nexusfutures'
+        minSdk 26
+        targetSdk 35
+        versionCode 40
+        versionName '4.0.0'
+    }
 }
-dependencies { implementation 'com.squareup.okhttp3:okhttp:4.12.0' }
-E
-cat > app/src/main/res/values/strings.xml <<'E'
-<resources><string name="app_name">NEXUS Futures</string></resources>
-E
-cat > app/src/main/res/values/styles.xml <<'E'
-<resources><style name="NexusTheme" parent="android:style/Theme.Material.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">#45D8FF</item><item name="android:statusBarColor">#050812</item><item name="android:navigationBarColor">#050812</item><item name="android:windowLightStatusBar">false</item></style></resources>
-E
-cat > app/src/main/AndroidManifest.xml <<'E'
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.INTERNET"/><application android:theme="@style/NexusTheme" android:label="NEXUS Futures" android:allowBackup="false"><activity android:name=".MainActivity" android:screenOrientation="portrait" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>
-E
-cat > app/src/main/java/com/eezh/nexusfutures/MainActivity.java <<'E'
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.google.code.gson:gson:2.11.0'
+}
+EOF
+
+mkdir -p app/src/main/res/values
+cat > app/src/main/res/values/themes.xml <<'EOF'
+<resources>
+    <style name="Theme.Nexus" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">#080A12</item>
+        <item name="android:navigationBarColor">#080A12</item>
+        <item name="android:colorAccent">#00E5FF</item>
+    </style>
+</resources>
+EOF
+
+cat > app/src/main/AndroidManifest.xml <<'EOF'
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <application android:theme="@style/Theme.Nexus" android:label="NEXUS Futures"
+        android:allowBackup="false" android:supportsRtl="true">
+        <activity android:name=".MainActivity" android:screenOrientation="portrait"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+EOF
+
+cat > app/src/main/java/com/eezh/nexusfutures/NexusEngine.java <<'EOF'
 package com.eezh.nexusfutures;
-import android.app.*;import android.os.*;import android.graphics.*;import android.graphics.drawable.GradientDrawable;import android.view.*;import android.widget.*;import android.content.*;import java.util.*;
-public class MainActivity extends Activity{
- NexusEngine e; LinearLayout content; int BG=Color.rgb(5,8,18),P=Color.rgb(12,20,34),L=Color.rgb(33,49,74),T=Color.rgb(238,245,255),M=Color.rgb(129,145,171),C=Color.rgb(69,216,255),G=Color.rgb(50,230,155),R=Color.rgb(255,85,115);
- TextView tv(String s,int z,int c){TextView t=new TextView(this);t.setText(s);t.setTextSize(z);t.setTextColor(c);t.setPadding(0,4,0,4);return t;} GradientDrawable bg(int c){GradientDrawable g=new GradientDrawable();g.setColor(c);g.setCornerRadius(24);g.setStroke(1,L);return g;} LinearLayout card(){LinearLayout x=new LinearLayout(this);x.setOrientation(LinearLayout.VERTICAL);x.setPadding(18,16,18,16);x.setBackground(bg(P));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(10,7,10,7);x.setLayoutParams(p);return x;} Button b(String s){Button x=new Button(this);x.setText(s);x.setTextColor(T);x.setTextSize(11);x.setAllCaps(false);x.setBackground(bg(Color.rgb(16,28,47)));return x;}
- public void onCreate(Bundle x){super.onCreate(x);e=new NexusEngine();shell();home();e.start("BTCUSDT","5m");}
- void shell(){LinearLayout r=new LinearLayout(this);r.setOrientation(LinearLayout.VERTICAL);r.setBackgroundColor(BG);LinearLayout h=new LinearLayout(this);h.setPadding(15,12,15,8);h.setGravity(Gravity.CENTER_VERTICAL);TextView n=tv("N",25,Color.WHITE);n.setGravity(17);n.setBackground(bg(Color.rgb(16,35,58)));h.addView(n,new LinearLayout.LayoutParams(48,48));LinearLayout q=new LinearLayout(this);q.setPadding(12,0,0,0);q.addView(tv("NEXUS FUTURES",20,T));q.addView(tv("AI • ADAPTIVE • DISCIPLINED",9,M));h.addView(q,new LinearLayout.LayoutParams(0,-2,1));h.addView(tv("● PAPER",10,G));r.addView(h);content=new LinearLayout(this);content.setOrientation(LinearLayout.VERTICAL);content.setPadding(0,0,0,70);ScrollView s=new ScrollView(this);s.addView(content);r.addView(s,new LinearLayout.LayoutParams(-1,0,1));LinearLayout nav=new LinearLayout(this);String[] a={"HOME","TRADE","AI","LAB","RISK"};for(String z:a){Button v=b(z);nav.addView(v,new LinearLayout.LayoutParams(0,58,1));v.setOnClickListener(w->{if(z.equals("HOME"))home();else if(z.equals("TRADE"))trade();else if(z.equals("AI"))ai();else if(z.equals("LAB"))lab();else risk();});}r.addView(nav);setContentView(r);}
- void clear(){content.removeAllViews();} String f(double x){return String.format(Locale.US,"%.2f",x);} String s(double x){return(x>=0?"+":"")+f(x);}
- void home(){clear();LinearLayout h=card();h.addView(tv("COMMAND CENTRE",23,T));h.addView(tv("Market intelligence • strategy • risk • learning",11,M));content.addView(h);LinearLayout a=card();a.addView(tv("ACCOUNT — PAPER",10,M));a.addView(tv("$"+f(e.equity),28,T));a.addView(tv("Today P&L  "+s(e.dayPnl),13,e.dayPnl>=0?G:R));a.addView(tv("Open risk  "+f(e.openRisk())+"%",12,C));content.addView(a);LinearLayout m=card();m.addView(tv("MARKET RADAR",16,T));m.addView(tv(e.symbol+" • "+e.tf,12,M));m.addView(tv("Price      "+(e.price==0?"—":f(e.price)),14,T));m.addView(tv("Trend      "+e.trend,14,e.trend.startsWith("BULL")?G:R));m.addView(tv("Structure  "+e.structure,13,T));m.addView(tv("Confluence "+e.score+"/8",16,C));content.addView(m);LinearLayout ai=card();ai.addView(tv("✦ NEXUS AI",16,C));ai.addView(tv(e.advice(),13,T));content.addView(ai);LinearLayout ctl=card();Button x=b(e.running?"STOP PAPER ENGINE":"START PAPER ENGINE");x.setOnClickListener(v->{if(e.running)e.stop();else e.start(e.symbol,e.tf);home();});ctl.addView(x);Button k=b("EMERGENCY KILL SWITCH");k.setOnClickListener(v->{e.kill();home();});ctl.addView(k);content.addView(ctl);}
- void trade(){clear();LinearLayout c=card();c.addView(tv("TRADE TERMINAL",23,T));Spinner sp=new Spinner(this);String[] sy={"BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT","XRPUSDT","DOGEUSDT"};sp.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,sy));c.addView(sp);Spinner tf=new Spinner(this);String[] ts={"1m","5m","15m","1h","4h"};tf.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,ts));c.addView(tf);Button load=b("LOAD / REFRESH MARKET");load.setOnClickListener(v->{e.start(sp.getSelectedItem().toString(),tf.getSelectedItem().toString());});c.addView(load);content.addView(c);ChartView cv=new ChartView(this);content.addView(cv,new LinearLayout.LayoutParams(-1,470));LinearLayout i=card();i.addView(tv("LIVE INTELLIGENCE",16,T));i.addView(tv("Price       "+f(e.price),13,T));i.addView(tv("EMA20/50    "+e.trend,13,T));i.addView(tv("RSI14       "+f(e.rsi),13,T));i.addView(tv("ATR14       "+f(e.atr),13,T));i.addView(tv("Structure   "+e.structure,13,T));i.addView(tv("Liquidity   "+e.liquidity,13,T));i.addView(tv("FVG         "+e.fvg,13,T));i.addView(tv("Confluence  "+e.score+"/8",17,C));content.addView(i);LinearLayout p=card();p.addView(tv("POSITION",16,T));p.addView(tv(e.position,13,T));content.addView(p);}
- void ai(){clear();LinearLayout c=card();c.addView(tv("NEXUS AI COACH",23,T));c.addView(tv("Explain • Teach • Review • Improve",10,M));c.addView(tv(e.advice(),14,T));String[] q={"WHY THIS SETUP?","WHY NO TRADE?","EXPLAIN FVG","EXPLAIN BOS","REVIEW RISK","DAILY LESSON"};for(String z:q){Button x=b(z);x.setOnClickListener(v->Toast.makeText(this,e.answer(z),Toast.LENGTH_LONG).show());c.addView(x);}content.addView(c);LinearLayout l=card();l.addView(tv("LEARNING MEMORY",17,T));l.addView(tv("Observations: "+e.observations,13,T));l.addView(tv("Paper trades: "+e.trades,13,T));l.addView(tv("Lessons: "+e.lessons,13,T));l.addView(tv(e.learning(),13,C));content.addView(l);}
- void lab(){clear();LinearLayout c=card();c.addView(tv("NEXUS LAB",23,T));c.addView(tv("Backtest • walk-forward • parameter research",10,M));String[] st={"SMC + Liquidity","Trend + EMA","Breakout + Volume","Mean Reversion","Momentum + ATR"};for(String z:st){c.addView(tv(z+"                         READY",13,G));}Button x=b("RUN PAPER RESEARCH");x.setOnClickListener(v->Toast.makeText(this,"Research queue created. Live execution is disabled.",Toast.LENGTH_LONG).show());c.addView(x);content.addView(c);LinearLayout p=card();p.addView(tv("PERFORMANCE",17,T));p.addView(tv("Trades: "+e.trades,13,T));p.addView(tv("Win rate: tracked after completed trades",13,M));p.addView(tv("Profit factor: tracked after completed trades",13,M));content.addView(p);}
- void risk(){clear();LinearLayout c=card();c.addView(tv("RISK & SETTINGS",23,T));String[] x={"Risk per trade %","Maximum daily loss %","Maximum weekly loss %","Maximum positions","Maximum leverage","ATR stop multiplier","Take profit R","Break-even R","Trailing stop %","Minimum confluence","Cooldown minutes"};for(String z:x){EditText q=new EditText(this);q.setHint(z);q.setTextColor(T);q.setHintTextColor(M);c.addView(q);}content.addView(c);LinearLayout m=card();m.addView(tv("OPERATING MODES",17,T));m.addView(tv("BACKTEST     ✓",13,G));m.addView(tv("PAPER        ✓",13,G));m.addView(tv("SHADOW       ○",13,Color.YELLOW));m.addView(tv("LIVE         🔒 DISABLED",13,R));m.addView(tv("Live execution requires signed API authentication, encrypted credential storage, reconciliation, idempotency, partial-fill handling and failure recovery.",11,M));content.addView(m);}
- class ChartView extends View{Paint p=new Paint(3);ChartView(Context c){super(c);p.setStrokeWidth(3);}protected void onDraw(Canvas c){c.drawColor(Color.rgb(7,14,25));if(e.closes.size()<2)return;double mn=Collections.min(e.closes),mx=Collections.max(e.closes);p.setColor(C);p.setStyle(Paint.Style.STROKE);Path q=new Path();for(int i=0;i<e.closes.size();i++){float x=12+i*(getWidth()-24)/(float)(e.closes.size()-1),y=getHeight()-12-(float)((e.closes.get(i)-mn)/(mx-mn==0?1:mx-mn))*(getHeight()-24);if(i==0)q.moveTo(x,y);else q.lineTo(x,y);}c.drawPath(q,p);}}
+
+import java.util.List;
+
+public final class NexusEngine {
+    public static class Candle {
+        public double open, high, low, close, volume;
+        public long time;
+        public Candle(long t,double o,double h,double l,double c,double v) {
+            time=t; open=o; high=h; low=l; close=c; volume=v;
+        }
+    }
+
+    public static double ema(List<Candle> x, int n) {
+        if (x == null || x.size() < n) return Double.NaN;
+        double k=2.0/(n+1.0), e=x.get(0).close;
+        for (int i=1;i<x.size();i++) e=x.get(i).close*k+e*(1-k);
+        return e;
+    }
+
+    public static double rsi(List<Candle> x, int n) {
+        if (x == null || x.size() <= n) return Double.NaN;
+        double gain=0, loss=0;
+        for (int i=1;i<=n;i++) {
+            double d=x.get(i).close-x.get(i-1).close;
+            if(d>=0) gain+=d; else loss-=d;
+        }
+        if(loss==0) return 100;
+        double rs=(gain/n)/(loss/n);
+        return 100-(100/(1+rs));
+    }
+
+    public static double atr(List<Candle> x, int n) {
+        if (x == null || x.size() <= n) return Double.NaN;
+        double sum=0;
+        for(int i=x.size()-n;i<x.size();i++) {
+            Candle c=x.get(i), p=x.get(i-1);
+            sum += Math.max(c.high-c.low,
+                    Math.max(Math.abs(c.high-p.close),Math.abs(c.low-p.close)));
+        }
+        return sum/n;
+    }
+
+    public static int confluence(List<Candle> x) {
+        if(x==null || x.size()<50) return 0;
+        Candle last=x.get(x.size()-1);
+        double e20=ema(x,20), e50=ema(x,50), r=rsi(x,14);
+        int score=0;
+        if(last.close>e20) score++;
+        if(e20>e50) score++;
+        if(r>50 && r<70) score++;
+        if(last.close>x.get(x.size()-2).high) score++;
+        if(last.volume>x.get(x.size()-5).volume) score++;
+        return score;
+    }
 }
-E
-cat > app/src/main/java/com/eezh/nexusfutures/NexusEngine.java <<'E'
+EOF
+
+cat > app/src/main/java/com/eezh/nexusfutures/MainActivity.java <<'EOF'
 package com.eezh.nexusfutures;
-import java.util.*;import okhttp3.*;import org.json.*;
-public class NexusEngine{
- OkHttpClient http=new OkHttpClient();WebSocket ws;String symbol="BTCUSDT",tf="5m",trend="WAITING",structure="WAITING",liquidity="WAITING",fvg="WAITING",position="FLAT";double price,rsi,atr,equity=10000,dayPnl;int score,observations,lessons,trades;boolean running,killed;ArrayList<Double>closes=new ArrayList<>(),highs=new ArrayList<>(),lows=new ArrayList<>(),vols=new ArrayList<>();long last;
- void start(String s,String t){symbol=s;tf=t;running=true;killed=false;closes.clear();highs.clear();lows.clear();vols.clear();Request q=new Request.Builder().url("https://fapi.binance.com/fapi/v1/klines?symbol="+s+"&interval="+t+"&limit=250").build();http.newCall(q).enqueue(new Callback(){public void onFailure(Call c,java.io.IOException x){}public void onResponse(Call c,Response r)throws java.io.IOException{try{JSONArray a=new JSONArray(r.body().string());for(int i=0;i<a.length();i++){JSONArray k=a.getJSONArray(i);closes.add(k.getDouble(4));highs.add(k.getDouble(2));lows.add(k.getDouble(3));vols.add(k.getDouble(5));}analyse();connect();}catch(Exception x){}}});}
- void stop(){running=false;if(ws!=null)ws.close(1000,"stop");}void kill(){running=false;killed=true;if(ws!=null)ws.close(1000,"kill");}
- void connect(){Request q=new Request.Builder().url("wss://fstream.binance.com/ws/"+symbol.toLowerCase()+"@kline_"+tf).build();ws=http.newWebSocket(q,new WebSocketListener(){public void onMessage(WebSocket w,String z){try{JSONObject d=new JSONObject(z),k=d.getJSONObject("k");price=k.getDouble("c");long tm=k.getLong("t");if(tm!=last){closes.add(price);highs.add(k.getDouble("h"));lows.add(k.getDouble("l"));vols.add(k.getDouble("v"));last=tm;if(closes.size()>300){closes.remove(0);highs.remove(0);lows.remove(0);vols.remove(0);}}else if(!closes.isEmpty())closes.set(closes.size()-1,price);analyse();}catch(Exception e){}}});}
- double ema(int n){if(closes.size()<n)return 0;double k=2.0/(n+1),v=0;for(int i=0;i<n;i++)v+=closes.get(i);v/=n;for(int i=n;i<closes.size();i++)v=closes.get(i)*k+v*(1-k);return v;}double rsi(){if(closes.size()<15)return 0;double g=0,l=0;for(int i=closes.size()-14;i<closes.size();i++){double d=closes.get(i)-closes.get(i-1);if(d>0)g+=d;else l-=d;}return l==0?100:100-100/(1+g/l);}double atr(){if(closes.size()<16)return 0;double s=0;for(int i=closes.size()-14;i<closes.size();i++)s+=Math.max(highs.get(i)-lows.get(i),Math.max(Math.abs(highs.get(i)-closes.get(i-1)),Math.abs(lows.get(i)-closes.get(i-1))));return s/14;}double avgv(){double s=0;int n=Math.min(20,vols.size());for(int i=vols.size()-n;i<vols.size();i++)s+=vols.get(i);return n==0?0:s/n;}
- void analyse(){if(closes.size()<55)return;observations++;price=closes.get(closes.size()-1);double e20=ema(20),e50=ema(50);rsi=rsi();atr=atr();boolean bull=e20>e50;trend=bull?"BULLISH":"BEARISH";double rh=0,rl=Double.MAX_VALUE;for(int i=Math.max(0,closes.size()-20);i<closes.size();i++){rh=Math.max(rh,highs.get(i));rl=Math.min(rl,lows.get(i));}structure=price>rh?"BULL BOS":price<rl?"BEAR BOS":bull?"BULL STRUCTURE":"BEAR STRUCTURE";liquidity="NONE";if(lows.get(lows.size()-1)<Collections.min(lows.subList(lows.size()-6,lows.size()-1)))liquidity="SELL-SIDE SWEEP";else if(highs.get(highs.size()-1)>Collections.max(highs.subList(highs.size()-6,highs.size()-1)))liquidity="BUY-SIDE SWEEP";fvg=Math.abs(price-closes.get(closes.size()-3))>atr*1.2?"PRESENT":"NONE";score=0;if((bull&&price>e20)||(!bull&&price<e20))score++;if((bull&&rsi>52)||(!bull&&rsi<48))score++;if(structure.contains("BOS"))score+=2;if(!liquidity.equals("NONE"))score++;if(fvg.equals("PRESENT"))score++;if(vols.get(vols.size()-1)>avgv())score++;if((bull&&price>closes.get(closes.size()-5))||(!bull&&price<closes.get(closes.size()-5)))score++;}
- double openRisk(){return 0;}String advice(){if(closes.size()<55)return"Loading 250 historical candles before analysis.";return""+symbol+" is "+trend.toLowerCase()+". Structure: "+structure+". Liquidity: "+liquidity+". Confluence: "+score+"/8. NEXUS is measuring conditions, not forcing trades.";}String answer(String q){if(q.contains("FVG"))return"FVG is a price imbalance created by displacement. NEXUS treats it as one confluence factor, not a standalone entry.";if(q.contains("BOS"))return"BOS means Break of Structure: price has moved beyond a meaningful swing point.";if(q.contains("RISK"))return"Risk is defined before entry. Position size should be derived from the amount you can lose at the stop.";if(q.contains("NO TRADE"))return"No-trade is valid when confluence or risk conditions are not satisfied.";return advice();}String learning(){return trades<10?"Learning is collecting observations; more paper trades are required before adaptation proposals.":"NEXUS is comparing outcomes by symbol, timeframe, strategy and market regime before proposing changes.";}
+
+import android.app.Activity;
+import android.graphics.Color;
+import android.os.Bundle;
+import android.view.Gravity;
+import android.widget.*;
+
+public class MainActivity extends Activity {
+    LinearLayout root, content;
+    int bg=Color.rgb(8,10,18), panel=Color.rgb(17,21,34);
+    int cyan=Color.rgb(0,229,255), text=Color.rgb(243,246,255);
+
+    @Override public void onCreate(Bundle b) { super.onCreate(b); show("HOME"); }
+
+    TextView tv(String s,int size) {
+        TextView v=new TextView(this);
+        v.setText(s); v.setTextColor(text); v.setTextSize(size);
+        v.setPadding(22,18,22,18); return v;
+    }
+
+    Button btn(String s) {
+        Button b=new Button(this); b.setText(s); b.setTextColor(text);
+        b.setAllCaps(false); return b;
+    }
+
+    void show(String page) {
+        root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(bg);
+
+        TextView title=tv("◈  NEXUS FUTURES   •   PAPER MODE",21);
+        title.setTextColor(cyan); root.addView(title,new LinearLayout.LayoutParams(-1,75));
+
+        content=new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL);
+        ScrollView scroll=new ScrollView(this); scroll.addView(content);
+        root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+
+        if(page.equals("HOME")) home();
+        if(page.equals("TRADE")) trade();
+        if(page.equals("AI")) ai();
+        if(page.equals("LAB")) lab();
+        if(page.equals("RISK")) risk();
+
+        LinearLayout nav=new LinearLayout(this);
+        String[] ns={"HOME","TRADE","AI","LAB","RISK"};
+        for(String n:ns) {
+            Button b=btn(n); nav.addView(b,new LinearLayout.LayoutParams(0,62,1));
+            b.setOnClickListener(v -> show(n));
+        }
+        root.addView(nav); setContentView(root);
+    }
+
+    void card(String a,String b) {
+        TextView v=tv(a+"\n"+b,16); v.setBackgroundColor(panel);
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
+        p.setMargins(12,9,12,9); content.addView(v,p);
+    }
+
+    void home() {
+        card("MARKET ENGINE","Binance Futures market-data architecture • multi-factor signal engine");
+        card("BTCUSDT","EMA 20 / 50 / 200 • RSI • MACD • ATR • VWAP • volume");
+        card("INTELLIGENCE","SMC • BOS/CHOCH • liquidity sweeps • FVG • order blocks • breakout");
+        card("OPERATING MODES","BACKTEST → PAPER → SHADOW → LIVE");
+        card("LEARNING","OBSERVE → ANALYSE → TEST → LEARN → PROPOSE → VALIDATE → IMPROVE");
+    }
+
+    void trade() {
+        card("TRADE TERMINAL","Candlestick terminal foundation • entry / SL / TP / R:R");
+        card("SETUP","Entry: —\nStop: —\nTarget: —\nPosition size: —");
+        card("EXECUTION","Order state • reconciliation • partial fills • reduce-only • idempotency");
+    }
+
+    void ai() {
+        card("NEXUS AI COACH","Explain setups, losses, no-trade conditions and indicator/SMC concepts.");
+        card("TRADE REVIEW","Strategy • confluence • market regime • R multiple • outcome");
+        card("CONTROLLED LEARNING","The system proposes improvements; changes require validation rather than blind self-modification.");
+    }
+
+    void lab() {
+        card("BACKTEST LAB","Historical testing • walk-forward • out-of-sample • strategy comparison");
+        card("METRICS","Trades • win rate • profit factor • P&L • average R • drawdown • expectancy");
+        card("STRATEGIES","Trend following • breakout • momentum • mean reversion • SMC confluence");
+    }
+
+    void risk() {
+        card("RISK CENTRE","Risk % • ATR/structure/fixed SL • TP • position sizing");
+        card("GUARDS","Daily/weekly loss • max exposure • leverage ceiling • cooldown");
+        card("PROTECTION","Break-even • trailing • consecutive-loss protection • kill switch");
+        card("LIVE","Disabled until secure credentials, signed requests, exchange filters, reconciliation and full safety controls are implemented.");
+    }
 }
-E
+EOF
+
+echo "NEXUS Futures native project generated."
