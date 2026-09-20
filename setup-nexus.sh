@@ -6,7 +6,8 @@ mkdir -p app/src/main/java/com/eezh/nexusfutures app/src/main/res/values
 cat > settings.gradle <<'EOF'
 pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS
+    )
     repositories { google(); mavenCentral() }
 }
 rootProject.name = "NEXUS-Futures"
@@ -48,10 +49,9 @@ dependencies {
 }
 EOF
 
-mkdir -p app/src/main/res/values
 cat > app/src/main/res/values/themes.xml <<'EOF'
 <resources>
-    <style name="Theme.Nexus" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Theme.Nexus" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:statusBarColor">#080A12</item>
@@ -142,7 +142,6 @@ package com.eezh.nexusfutures;
 import android.app.Activity;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.view.Gravity;
 import android.widget.*;
 
 public class MainActivity extends Activity {
@@ -166,10 +165,8 @@ public class MainActivity extends Activity {
     void show(String page) {
         root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(bg);
-
         TextView title=tv("◈  NEXUS FUTURES   •   PAPER MODE",21);
         title.setTextColor(cyan); root.addView(title,new LinearLayout.LayoutParams(-1,75));
-
         content=new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL);
         ScrollView scroll=new ScrollView(this); scroll.addView(content);
         root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
@@ -230,4 +227,4 @@ public class MainActivity extends Activity {
 }
 EOF
 
-echo "NEXUS Futures native project generated."
+echo "NEXUS Futures native project generated successfully."
